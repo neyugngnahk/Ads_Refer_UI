@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ads Form</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 40px; }
+    .container { background: #fff; padding: 24px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 2px 8px #0001; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; }
+    select, input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
+    input[readonly] { background: #eee; }
+    button { width: 100%; padding: 10px; background: #007bff; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="alertBox" style="display:none; margin-bottom:16px; padding:10px; border-radius:4px; font-weight:bold;"></div>
+    <div class="form-group">
+      <label for="ad_id">ad_id</label>
+      <select id="ad_id"></select>
+    </div>
+    <div class="form-group">
+      <label for="ad_name">ad_name</label>
+      <input type="text" id="ad_name" readonly />
+    </div>
+    <div class="form-group">
+      <label for="daily_budget">daily_budget</label>
+      <input type="text" id="daily_budget" readonly />
+    </div>
+    <div class="form-group">
+      <label for="new_daily_budget">new_daily_budget</label>
+      <input type="text" id="new_daily_budget" />
+    </div>
+    <button id="acceptBtn">Accept</button>
+  </div>
+  <script>
+    let adsData = [];
+    const adIdSelect = document.getElementById('ad_id');
+    const adNameInput = document.getElementById('ad_name');
+    const dailyBudgetInput = document.getElementById('daily_budget');
+    const newDailyBudgetInput = document.getElementById('new_daily_budget');
+    const acceptBtn = document.getElementById('acceptBtn');
+    const alertBox = document.getElementById('alertBox');
+
+    // Hàm hiển thị thông báo
+    function showAlert(message, type) {
+      alertBox.style.display = 'block';
+      alertBox.textContent = message;
+      if (type === 'success') {
+        alertBox.style.background = '#d4edda';
+        alertBox.style.color = '#155724';
+        alertBox.style.border = '1px solid #c3e6cb';
+      } else if (type === 'error') {
+        alertBox.style.background = '#f8d7da';
+        alertBox.style.color = '#721c24';
+        alertBox.style.border = '1px solid #f5c6cb';
+      }
+      setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
+    }
+
+    // Hàm fetch dữ liệu ads từ backend
+    async function fetchAds() {
+      try {
+        const res = await fetch('http://localhost:3001/api/ads');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          adsData = data;
+        } else {
+          adsData = [];
+        }
+        renderAdIdOptions();
+        updateFieldsByAdId();
+      } catch (err) {
+        adsData = [];
+        renderAdIdOptions();
+        // Không thay đổi các ô còn lại nếu lỗi
+      }
+    }
+
+    // Render dropdown ad_id
+    function renderAdIdOptions() {
+      adIdSelect.innerHTML = '';
+      if (adsData.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '-- Không có ad_id --';
+        adIdSelect.appendChild(option);
+      } else {
+        adsData.forEach(ad => {
+          const option = document.createElement('option');
+          option.value = ad.ad_id;
+          option.textContent = ad.ad_id;
+          adIdSelect.appendChild(option);
+        });
+      }
+    }
+
+    // Cập nhật các ô khi chọn ad_id
+    function updateFieldsByAdId() {
+      const selectedId = adIdSelect.value;
+      const ad = adsData.find(a => a.ad_id == selectedId);
+      if (ad) {
+        adNameInput.value = ad.ad_name;
+        dailyBudgetInput.value = ad.daily_budget;
+        newDailyBudgetInput.value = ad.new_daily_budget || '';
+      } else {
+        // Không thay đổi giá trị các ô nếu không có ad
+      }
+    }
+
+    // Sự kiện chọn ad_id
+    adIdSelect.addEventListener('change', updateFieldsByAdId);
+
+    // Sự kiện nút accept
+    acceptBtn.addEventListener('click', async () => {
+      const selectedId = adIdSelect.value;
+      const ad = adsData.find(a => a.ad_id == selectedId);
+      if (!ad) return;
+      const payload = {
+        ad_id: ad.ad_id,
+        ad_name: ad.ad_name,
+        daily_budget: ad.daily_budget,
+        new_daily_budget: newDailyBudgetInput.value
+      };
+      const webhookUrl = 'https://n8n.aipencil.ai/webhook-test/accept_increase';
+      try {
+        const resp = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          showAlert('Success!', 'success');
+        } else {
+          showAlert('Error: Không gửi được dữ liệu!', 'error');
+        }
+      } catch (err) {
+        showAlert('Error: Không gửi được dữ liệu!', 'error');
+      }
+    });
+
+    // Polling dữ liệu mỗi 5 giây
+    setInterval(fetchAds, 5000);
+    // Lấy dữ liệu lần đầu
+    fetchAds();
+  </script>
+</body>
+</html>
