@@ -10,9 +10,9 @@ app.use(express.json());
 // TODO: Điền thông tin kết nối Postgres ở đây
 const pool = new Pool({
   user: 'n8n_user',
-  host: 'YOUR_HOST', 
+  host: '100.116.141.43', 
   database: 'postgres', 
-  password: 'n8n_passpass',
+  password: 'n8n_pass',
   port: 5432,
 });
 
