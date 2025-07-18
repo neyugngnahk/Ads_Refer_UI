@@ -25,6 +25,16 @@ app.get('/api/ads', async (req, res) => {
   }
 });
 
+// API lấy danh sách ads_pause
+app.get('/api/ads-pause', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT ad_id, ad_name FROM ads_pause');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API insert data vào bảng incr_accept
 app.post('/api/insert-accept', async (req, res) => {
   const { ad_id, ad_name, daily_budget, new_daily_budget } = req.body;
@@ -46,6 +56,18 @@ app.post('/api/remove-ad', async (req, res) => {
   if (!ad_id) return res.status(400).json({ error: 'Thiếu ad_id' });
   try {
     const result = await pool.query('DELETE FROM ads_manager WHERE ad_id = $1', [ad_id]);
+    res.json({ success: true, deleted: result.rowCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API xóa ad_name khỏi bảng ads_pause
+app.post('/api/remove-ad-pause', async (req, res) => {
+  const { ad_name } = req.body;
+  if (!ad_name) return res.status(400).json({ error: 'Thiếu ad_name' });
+  try {
+    const result = await pool.query('DELETE FROM ads_pause WHERE ad_name = $1', [ad_name]);
     res.json({ success: true, deleted: result.rowCount });
   } catch (err) {
     res.status(500).json({ error: err.message });

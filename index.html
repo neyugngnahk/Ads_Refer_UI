@@ -6,7 +6,22 @@
   <title>Ads Form</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 40px; }
-    .container { background: #fff; padding: 24px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 2px 8px #0001; }
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      margin: auto;
+      max-width: 900px;
+    }
+    .box {
+      background: #fff;
+      padding: 24px;
+      border-radius: 8px;
+      min-width: 340px;
+      box-shadow: 0 2px 8px #0001;
+      flex: 1 1 0;
+    }
     .form-group { margin-bottom: 18px; }
     label { display: block; margin-bottom: 6px; font-weight: bold; }
     select, input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
@@ -17,33 +32,53 @@
 </head>
 <body>
   <div class="container">
-    <div id="alertBox" style="display:none; margin-bottom:16px; padding:10px; border-radius:4px; font-weight:bold;"></div>
-    <div class="form-group">
-      <label for="ad_id">ad_id</label>
-      <select id="ad_id"></select>
+    <div id="alertBox" style="display:none; margin-bottom:16px; padding:10px; border-radius:4px; font-weight:bold; position:absolute; left:0; right:0; max-width:400px; margin:auto;"></div>
+    <!-- Hộp 1: giữ nguyên như cũ -->
+    <div id="box1" class="box">
+      <div class="form-group">
+        <label for="ad_id">ad_id</label>
+        <select id="ad_id"></select>
+      </div>
+      <div class="form-group">
+        <label for="ad_name">ad_name</label>
+        <input type="text" id="ad_name" readonly />
+      </div>
+      <div class="form-group">
+        <label for="daily_budget">daily_budget</label>
+        <input type="text" id="daily_budget" readonly />
+      </div>
+      <div class="form-group">
+        <label for="new_daily_budget">new_daily_budget</label>
+        <input type="text" id="new_daily_budget" />
+      </div>
+      <button id="acceptBtn">Accept</button>
     </div>
-    <div class="form-group">
-      <label for="ad_name">ad_name</label>
-      <input type="text" id="ad_name" readonly />
+    <!-- Hộp 2: pause quảng cáo -->
+    <div id="box2" class="box">
+      <div class="form-group">
+        <label for="pause_ad_name">ad_name</label>
+        <select id="pause_ad_name"></select>
+      </div>
+      <div class="form-group">
+        <label for="pause_ad_id">ad_id</label>
+        <input type="text" id="pause_ad_id" readonly />
+      </div>
+      <button id="acceptPauseBtn" style="background:#dc3545;">Accept Pause</button>
     </div>
-    <div class="form-group">
-      <label for="daily_budget">daily_budget</label>
-      <input type="text" id="daily_budget" readonly />
-    </div>
-    <div class="form-group">
-      <label for="new_daily_budget">new_daily_budget</label>
-      <input type="text" id="new_daily_budget" />
-    </div>
-    <button id="acceptBtn">Accept</button>
   </div>
   <script>
     let adsData = [];
+    let adsPauseData = [];
     const adIdSelect = document.getElementById('ad_id');
     const adNameInput = document.getElementById('ad_name');
     const dailyBudgetInput = document.getElementById('daily_budget');
     const newDailyBudgetInput = document.getElementById('new_daily_budget');
     const acceptBtn = document.getElementById('acceptBtn');
     const alertBox = document.getElementById('alertBox');
+    // Hộp 2
+    const pauseAdNameSelect = document.getElementById('pause_ad_name');
+    const pauseAdIdInput = document.getElementById('pause_ad_id');
+    const acceptPauseBtn = document.getElementById('acceptPauseBtn');
 
     // Hàm hiển thị thông báo
     function showAlert(message, type) {
@@ -187,10 +222,99 @@
       }
     });
 
-    // Polling dữ liệu mỗi 5 giây
-    setInterval(fetchAds, 5000);
-    // Lấy dữ liệu lần đầu
-    fetchAds();
+    // Render dropdown ad_name cho hộp 2 (không trùng lặp, lấy từ adsPauseData)
+    function renderPauseAdNameOptions() {
+      // Lưu lại ad_name đang chọn
+      const currentSelected = pauseAdNameSelect.value;
+      pauseAdNameSelect.innerHTML = '';
+      const uniqueAdNames = [...new Set(adsPauseData.map(ad => ad.ad_name))];
+      uniqueAdNames.forEach(ad_name => {
+        const option = document.createElement('option');
+        option.value = ad_name;
+        option.textContent = ad_name;
+        pauseAdNameSelect.appendChild(option);
+      });
+      // Set lại giá trị đã chọn nếu còn tồn tại
+      if (uniqueAdNames.includes(currentSelected)) {
+        pauseAdNameSelect.value = currentSelected;
+      } else {
+        pauseAdNameSelect.selectedIndex = 0;
+      }
+      updatePauseAdIdByName();
+    }
+    // Khi chọn ad_name ở hộp 2 thì cập nhật ad_id tương ứng từ adsPauseData
+    pauseAdNameSelect.addEventListener('change', () => {
+      const ad_name = pauseAdNameSelect.value;
+      const ad = adsPauseData.find(a => a.ad_name == ad_name);
+      pauseAdIdInput.value = ad ? ad.ad_id : '';
+    });
+    // Cập nhật ad_id khi render lần đầu
+    function updatePauseAdIdByName() {
+      const ad_name = pauseAdNameSelect.value;
+      const ad = adsPauseData.find(a => a.ad_name == ad_name);
+      pauseAdIdInput.value = ad ? ad.ad_id : '';
+    }
+    // Hàm fetch dữ liệu ads_pause từ backend
+    async function fetchAdsPause() {
+      try {
+        const res = await fetch('https://backend-ads.aipencil.name.vn/api/ads-pause');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          // Thêm các ad_name mới vào adsPauseData, không reset lại danh sách cũ
+          const existingAdNames = adsPauseData.map(ad => ad.ad_name);
+          const newRows = data.filter(ad => !existingAdNames.includes(ad.ad_name));
+          if (newRows.length > 0) {
+            adsPauseData = adsPauseData.concat(newRows);
+            renderPauseAdNameOptions();
+          }
+          // Nếu không có row mới thì không làm gì cả
+        }
+        // Nếu data rỗng thì không làm gì cả (giữ nguyên adsPauseData)
+      } catch (err) {
+        // Không thay đổi adsPauseData nếu lỗi
+      }
+    }
+    // Polling dữ liệu mỗi 5 giây cho ads_pause
+    setInterval(fetchAdsPause, 5000);
+    fetchAdsPause();
+
+    // Sự kiện nút accept pause
+    acceptPauseBtn.addEventListener('click', async () => {
+      const ad_name = pauseAdNameSelect.value;
+      if (!ad_name) return;
+      // Gửi tới webhook n8n để pause quảng cáo
+      const webhookPauseUrl = 'https://n8n.aipencil.ai/webhook/pause_ad'; // Đổi thành webhook thật của bạn
+      try {
+        const resp = await fetch(webhookPauseUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ad_name })
+        });
+        if (resp.ok) {
+          // Sau khi gửi webhook thành công, xóa ad_name khỏi bảng ads_pause
+          const removeResp = await fetch('https://backend-ads.aipencil.name.vn/api/remove-ad-pause', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad_name })
+          });
+          if (removeResp.ok) {
+            showAlert('Đã gửi yêu cầu pause và xóa thành công!', 'success');
+            // Xóa ad_name khỏi adsPauseData và cập nhật giao diện
+            const idx = adsPauseData.findIndex(a => a.ad_name == ad_name);
+            if (idx !== -1) {
+              adsPauseData.splice(idx, 1);
+              renderPauseAdNameOptions();
+            }
+          } else {
+            showAlert('Pause thành công nhưng xóa DB thất bại!', 'error');
+          }
+        } else {
+          showAlert('Gửi pause thất bại!', 'error');
+        }
+      } catch (err) {
+        showAlert('Gửi pause thất bại!', 'error');
+      }
+    });
   </script>
 </body>
 </html>
