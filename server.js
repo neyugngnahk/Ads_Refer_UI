@@ -25,6 +25,21 @@ app.get('/api/ads', async (req, res) => {
   }
 });
 
+// API insert data vào bảng incr_accept
+app.post('/api/insert-accept', async (req, res) => {
+  const { ad_id, ad_name, daily_budget, new_daily_budget } = req.body;
+  if (!ad_id) return res.status(400).json({ error: 'Thiếu ad_id' });
+  try {
+    const result = await pool.query(
+      'INSERT INTO incr_accept (ad_id, ad_name, daily_budget, new_daily_budget) VALUES ($1, $2, $3, $4)',
+      [ad_id, ad_name, daily_budget, new_daily_budget]
+    );
+    res.json({ success: true, inserted: result.rowCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API xóa ad_id khỏi bảng ads_manager
 app.post('/api/remove-ad', async (req, res) => {
   const { ad_id } = req.body;

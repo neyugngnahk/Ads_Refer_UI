@@ -147,22 +147,37 @@
           body: JSON.stringify(payload)
         });
         if (resp.ok) {
-          // Sau khi gửi webhook thành công, gọi API backend để xóa ad_id khỏi DB
-          const removeResp = await fetch('http://localhost:3001/api/remove-ad', {
+          // Sau khi gửi webhook thành công, insert data vào bảng incr_accept trước
+          const insertResp = await fetch('http://localhost:3001/api/insert-accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ad_id: ad.ad_id })
+            body: JSON.stringify({
+              ad_id: ad.ad_id,
+              ad_name: ad.ad_name,
+              daily_budget: ad.daily_budget,
+              new_daily_budget: newDailyBudgetInput.value
+            })
           });
-          if (removeResp.ok) {
-            showAlert('Success!', 'success');
-            const idx = adsData.findIndex(a => a.ad_id == selectedId);
-            if (idx !== -1) {
-              adsData.splice(idx, 1);
-              renderAdIdOptions();
-              updateFieldsByAdId();
+          if (insertResp.ok) {
+            // Sau khi insert thành công, xóa khỏi bảng ads_manager
+            const removeResp = await fetch('http://localhost:3001/api/remove-ad', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ad_id: ad.ad_id })
+            });
+            if (removeResp.ok) {
+              showAlert('Success!', 'success');
+              const idx = adsData.findIndex(a => a.ad_id == selectedId);
+              if (idx !== -1) {
+                adsData.splice(idx, 1);
+                renderAdIdOptions();
+                updateFieldsByAdId();
+              }
+            } else {
+              showAlert('Gửi webhook và insert thành công nhưng xóa DB thất bại!', 'error');
             }
           } else {
-            showAlert('Gửi webhook thành công nhưng xóa DB thất bại!', 'error');
+            showAlert('Gửi webhook thành công nhưng insert DB thất bại!', 'error');
           }
         } else {
           showAlert('Error: Không gửi được dữ liệu!', 'error');
