@@ -64,7 +64,7 @@
     // Hàm fetch dữ liệu ads từ backend
     async function fetchAds() {
       try {
-        const res = await fetch('http://localhost:3001/api/ads');
+        const res = await fetch('https://backend-ads.aipencil.name.vn/api/ads');
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           // Lấy danh sách ad_id đã có trên web
@@ -148,7 +148,7 @@
         });
         if (resp.ok) {
           // Sau khi gửi webhook thành công, insert data vào bảng incr_accept trước
-          const insertResp = await fetch('http://localhost:3001/api/insert-accept', {
+          const insertResp = await fetch('https://backend-ads.aipencil.name.vn/api/insert-accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -160,7 +160,7 @@
           });
           if (insertResp.ok) {
             // Sau khi insert thành công, xóa khỏi bảng ads_manager
-            const removeResp = await fetch('http://localhost:3001/api/remove-ad', {
+            const removeResp = await fetch('https://backend-ads.aipencil.name.vn/api/remove-ad', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ad_id: ad.ad_id })
