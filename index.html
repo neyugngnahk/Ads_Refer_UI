@@ -67,21 +67,28 @@
         const res = await fetch('http://localhost:3001/api/ads');
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          adsData = data;
-        } else {
-          adsData = [];
+          // Lấy danh sách ad_id đã có trên web
+          const existingAdIds = adsData.map(ad => ad.ad_id);
+          // Lọc ra các row mới (ad_id chưa từng có)
+          const newRows = data.filter(ad => !existingAdIds.includes(ad.ad_id));
+          // Thêm các row mới vào adsData
+          if (newRows.length > 0) {
+            adsData = adsData.concat(newRows);
+            renderAdIdOptions();
+            updateFieldsByAdId();
+          }
+          // Nếu không có row mới thì không làm gì cả
         }
-        renderAdIdOptions();
-        updateFieldsByAdId();
+        // Nếu data rỗng thì không làm gì cả (giữ nguyên adsData)
       } catch (err) {
-        adsData = [];
-        renderAdIdOptions();
-        // Không thay đổi các ô còn lại nếu lỗi
+        // Không thay đổi adsData nếu lỗi
       }
     }
 
     // Render dropdown ad_id
     function renderAdIdOptions() {
+      // Lưu lại ad_id đang chọn
+      const currentSelected = adIdSelect.value;
       adIdSelect.innerHTML = '';
       if (adsData.length === 0) {
         const option = document.createElement('option');
@@ -95,6 +102,13 @@
           option.textContent = ad.ad_id;
           adIdSelect.appendChild(option);
         });
+        // Set lại giá trị đã chọn nếu còn tồn tại
+        if (adsData.some(ad => ad.ad_id == currentSelected)) {
+          adIdSelect.value = currentSelected;
+        } else {
+          // Nếu ad_id cũ không còn, chọn ad_id đầu tiên
+          adIdSelect.selectedIndex = 0;
+        }
       }
     }
 
@@ -133,7 +147,23 @@
           body: JSON.stringify(payload)
         });
         if (resp.ok) {
-          showAlert('Success!', 'success');
+          // Sau khi gửi webhook thành công, gọi API backend để xóa ad_id khỏi DB
+          const removeResp = await fetch('http://localhost:3001/api/remove-ad', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad_id: ad.ad_id })
+          });
+          if (removeResp.ok) {
+            showAlert('Success!', 'success');
+            const idx = adsData.findIndex(a => a.ad_id == selectedId);
+            if (idx !== -1) {
+              adsData.splice(idx, 1);
+              renderAdIdOptions();
+              updateFieldsByAdId();
+            }
+          } else {
+            showAlert('Gửi webhook thành công nhưng xóa DB thất bại!', 'error');
+          }
         } else {
           showAlert('Error: Không gửi được dữ liệu!', 'error');
         }
