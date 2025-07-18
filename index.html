@@ -102,17 +102,9 @@
         const res = await fetch('https://backend-ads.aipencil.name.vn/api/ads');
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          // Lấy danh sách ad_id đã có trên web
-          const existingAdIds = adsData.map(ad => ad.ad_id);
-          // Lọc ra các row mới (ad_id chưa từng có)
-          const newRows = data.filter(ad => !existingAdIds.includes(ad.ad_id));
-          // Thêm các row mới vào adsData
-          if (newRows.length > 0) {
-            adsData = adsData.concat(newRows);
-            renderAdIdOptions();
-            updateFieldsByAdId();
-          }
-          // Nếu không có row mới thì không làm gì cả
+          adsData = data;
+          renderAdIdOptions();
+          updateFieldsByAdId();
         }
         // Nếu data rỗng thì không làm gì cả (giữ nguyên adsData)
       } catch (err) {
@@ -283,7 +275,7 @@
       const ad_name = pauseAdNameSelect.value;
       if (!ad_name) return;
       // Gửi tới webhook n8n để pause quảng cáo
-      const webhookPauseUrl = 'https://n8n.aipencil.ai/webhook/pause_ad'; // Đổi thành webhook thật của bạn
+      const webhookPauseUrl = 'https://n8n.aipencil.ai/webhook/ads_pause'; // Đổi thành webhook thật của bạn
       try {
         const resp = await fetch(webhookPauseUrl, {
           method: 'POST',
