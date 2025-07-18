@@ -139,7 +139,7 @@
         daily_budget: ad.daily_budget,
         new_daily_budget: newDailyBudgetInput.value
       };
-      const webhookUrl = 'https://n8n.aipencil.ai/webhook-test/accept_increase';
+      const webhookUrl = 'https://n8n.aipencil.ai/webhook/accept_increase';
       try {
         const resp = await fetch(webhookUrl, {
           method: 'POST',
