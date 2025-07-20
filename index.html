@@ -19,12 +19,12 @@
   <div class="container">
     <div id="alertBox" style="display:none; margin-bottom:16px; padding:10px; border-radius:4px; font-weight:bold;"></div>
     <div class="form-group">
-      <label for="ad_id">ad_id</label>
-      <select id="ad_id"></select>
+      <label for="ad_name">ad_name</label>
+      <select id="ad_name"></select>
     </div>
     <div class="form-group">
-      <label for="ad_name">ad_name</label>
-      <input type="text" id="ad_name" readonly />
+      <label for="ad_id">ad_id</label>
+      <input type="text" id="ad_id" readonly />
     </div>
     <div class="form-group">
       <label for="daily_budget">daily_budget</label>
@@ -38,8 +38,8 @@
   </div>
   <script>
     let adsData = [];
-    const adIdSelect = document.getElementById('ad_id');
-    const adNameInput = document.getElementById('ad_name');
+    const adNameSelect = document.getElementById('ad_name');
+    const adIdInput = document.getElementById('ad_id');
     const dailyBudgetInput = document.getElementById('daily_budget');
     const newDailyBudgetInput = document.getElementById('new_daily_budget');
     const acceptBtn = document.getElementById('acceptBtn');
@@ -67,71 +67,61 @@
         const res = await fetch('https://backend-ads.aipencil.name.vn/api/ads');
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          // Lấy danh sách ad_id đã có trên web
-          const existingAdIds = adsData.map(ad => ad.ad_id);
-          // Lọc ra các row mới (ad_id chưa từng có)
-          const newRows = data.filter(ad => !existingAdIds.includes(ad.ad_id));
-          // Thêm các row mới vào adsData
-          if (newRows.length > 0) {
-            adsData = adsData.concat(newRows);
-            renderAdIdOptions();
-            updateFieldsByAdId();
-          }
-          // Nếu không có row mới thì không làm gì cả
+          adsData = data;
+          renderAdNameOptions();
+          updateFieldsByAdName();
         }
-        // Nếu data rỗng thì không làm gì cả (giữ nguyên adsData)
       } catch (err) {
         // Không thay đổi adsData nếu lỗi
       }
     }
 
-    // Render dropdown ad_id
-    function renderAdIdOptions() {
-      // Lưu lại ad_id đang chọn
-      const currentSelected = adIdSelect.value;
-      adIdSelect.innerHTML = '';
+    // Render dropdown ad_name
+    function renderAdNameOptions() {
+      const currentSelected = adNameSelect.value;
+      adNameSelect.innerHTML = '';
       if (adsData.length === 0) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = '-- Không có ad_id --';
-        adIdSelect.appendChild(option);
+        option.textContent = '-- Không có ad_name --';
+        adNameSelect.appendChild(option);
       } else {
         adsData.forEach(ad => {
           const option = document.createElement('option');
-          option.value = ad.ad_id;
-          option.textContent = ad.ad_id;
-          adIdSelect.appendChild(option);
+          option.value = ad.ad_name;
+          option.textContent = ad.ad_name;
+          adNameSelect.appendChild(option);
         });
-        // Set lại giá trị đã chọn nếu còn tồn tại
-        if (adsData.some(ad => ad.ad_id == currentSelected)) {
-          adIdSelect.value = currentSelected;
+        if (adsData.some(ad => ad.ad_name == currentSelected)) {
+          adNameSelect.value = currentSelected;
         } else {
-          // Nếu ad_id cũ không còn, chọn ad_id đầu tiên
-          adIdSelect.selectedIndex = 0;
+          adNameSelect.selectedIndex = 0;
         }
       }
     }
 
-    // Cập nhật các ô khi chọn ad_id
-    function updateFieldsByAdId() {
-      const selectedId = adIdSelect.value;
-      const ad = adsData.find(a => a.ad_id == selectedId);
+    // Cập nhật các ô khi chọn ad_name
+    function updateFieldsByAdName() {
+      const selectedName = adNameSelect.value;
+      const ad = adsData.find(a => a.ad_name == selectedName);
       if (ad) {
-        adNameInput.value = ad.ad_name;
+        adIdInput.value = ad.ad_id;
         dailyBudgetInput.value = ad.daily_budget;
         newDailyBudgetInput.value = ad.new_daily_budget || '';
       } else {
-        // Không thay đổi giá trị các ô nếu không có ad
+        adIdInput.value = '';
+        dailyBudgetInput.value = '';
+        newDailyBudgetInput.value = '';
       }
     }
 
-    // Sự kiện chọn ad_id
-    adIdSelect.addEventListener('change', updateFieldsByAdId);
+    // Sự kiện chọn ad_name
+    adNameSelect.addEventListener('change', updateFieldsByAdName);
 
     // Sự kiện nút accept
     acceptBtn.addEventListener('click', async () => {
-      const selectedId = adIdSelect.value;
-      const ad = adsData.find(a => a.ad_id == selectedId);
+      const selectedName = adNameSelect.value;
+      const ad = adsData.find(a => a.ad_name == selectedName);
       if (!ad) return;
       const payload = {
         ad_id: ad.ad_id,
@@ -167,11 +157,11 @@
             });
             if (removeResp.ok) {
               showAlert('Success!', 'success');
-              const idx = adsData.findIndex(a => a.ad_id == selectedId);
+              const idx = adsData.findIndex(a => a.ad_name == selectedName);
               if (idx !== -1) {
                 adsData.splice(idx, 1);
-                renderAdIdOptions();
-                updateFieldsByAdId();
+                renderAdNameOptions();
+                updateFieldsByAdName();
               }
             } else {
               showAlert('Gửi webhook và insert thành công nhưng xóa DB thất bại!', 'error');
