@@ -35,6 +35,7 @@
       <input type="text" id="new_daily_budget" />
     </div>
     <button id="acceptBtn">Accept</button>
+    <button id="resetBudgetBtn" style="display:none; margin-top:10px; background:#28a745;">Accept reset budget at 11pm30</button>
   </div>
   <script>
     let adsData = [];
@@ -44,6 +45,7 @@
     const newDailyBudgetInput = document.getElementById('new_daily_budget');
     const acceptBtn = document.getElementById('acceptBtn');
     const alertBox = document.getElementById('alertBox');
+    const resetBudgetBtn = document.getElementById('resetBudgetBtn');
 
     // Hàm hiển thị thông báo
     function showAlert(message, type) {
@@ -137,43 +139,77 @@
           body: JSON.stringify(payload)
         });
         if (resp.ok) {
-          // Sau khi gửi webhook thành công, insert data vào bảng incr_accept trước
-          const insertResp = await fetch('https://backend-ads.aipencil.name.vn/api/insert-accept', {
+          // Sau khi gửi webhook thành công, xóa khỏi bảng ads_manager (DB)
+          const removeResp = await fetch('https://backend-ads.aipencil.name.vn/api/remove-ad', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ad_id: ad.ad_id,
-              ad_name: ad.ad_name,
-              daily_budget: ad.daily_budget,
-              new_daily_budget: newDailyBudgetInput.value
-            })
+            body: JSON.stringify({ ad_id: ad.ad_id })
           });
-          if (insertResp.ok) {
-            // Sau khi insert thành công, xóa khỏi bảng ads_manager
-            const removeResp = await fetch('https://backend-ads.aipencil.name.vn/api/remove-ad', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ad_id: ad.ad_id })
-            });
-            if (removeResp.ok) {
-              showAlert('Success!', 'success');
-              const idx = adsData.findIndex(a => a.ad_name == selectedName);
-              if (idx !== -1) {
-                adsData.splice(idx, 1);
-                renderAdNameOptions();
-                updateFieldsByAdName();
-              }
-            } else {
-              showAlert('Gửi webhook và insert thành công nhưng xóa DB thất bại!', 'error');
-            }
+          if (removeResp.ok) {
+            showAlert('Success!', 'success');
+            // KHÔNG xóa khỏi adsData, KHÔNG cập nhật lại giao diện ở đây
+            // Hiện nút reset budget
+            resetBudgetBtn.style.display = 'block';
+            // Lưu lại thông tin ad cho nút reset
+            resetBudgetBtn.dataset.adId = ad.ad_id;
+            resetBudgetBtn.dataset.adName = ad.ad_name;
+            resetBudgetBtn.dataset.dailyBudget = ad.daily_budget;
+            resetBudgetBtn.dataset.newDailyBudget = newDailyBudgetInput.value;
           } else {
-            showAlert('Gửi webhook thành công nhưng insert DB thất bại!', 'error');
+            showAlert('Gửi webhook thành công nhưng xóa DB thất bại!', 'error');
           }
         } else {
           showAlert('Error: Không gửi được dữ liệu!', 'error');
         }
       } catch (err) {
         showAlert('Error: Không gửi được dữ liệu!', 'error');
+      }
+    });
+
+    // Sự kiện nút reset budget at 11pm30
+    resetBudgetBtn.addEventListener('click', async () => {
+      const payload = {
+        ad_id: resetBudgetBtn.dataset.adId,
+        ad_name: resetBudgetBtn.dataset.adName,
+        daily_budget: resetBudgetBtn.dataset.dailyBudget,
+        new_daily_budget: resetBudgetBtn.dataset.newDailyBudget
+      };
+      const webhookUrl = 'https://n8n.aipencil.ai/webhook/incr_accept';
+      if (!webhookUrl) {
+        showAlert('Chưa cấu hình webhook URL!', 'error');
+        resetBudgetBtn.style.display = 'none';
+        return;
+      }
+      // Ẩn nút ngay khi ấn
+      resetBudgetBtn.style.display = 'none';
+      try {
+        const resp = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          showAlert('Đã gửi yêu cầu reset budget lúc 23:30!', 'success');
+          // Gọi API xóa dữ liệu ở backend
+          const removeResp = await fetch('https://backend-ads.aipencil.name.vn/api/remove-ad', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ad_id: payload.ad_id })
+          });
+          if (removeResp.ok) {
+            // Xóa dữ liệu khỏi giao diện
+            const idx = adsData.findIndex(a => a.ad_id == payload.ad_id);
+            if (idx !== -1) {
+              adsData.splice(idx, 1);
+              renderAdNameOptions();
+              updateFieldsByAdName();
+            }
+          }
+        } else {
+          showAlert('Gửi yêu cầu thất bại!', 'error');
+        }
+      } catch (err) {
+        showAlert('Gửi yêu cầu thất bại!', 'error');
       }
     });
 
